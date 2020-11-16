@@ -14,15 +14,36 @@ public class ParticleController : MonoBehaviour
     void Start()
     {
         particles = new List<Particle>();
-        particles.Add(new Particle(Vector3.zero));
-        particles.Add(new Particle(cursor.transform.position));
+        for (int x = -5; x < 5; x++)
+        {
+            for (int y = -5; y < 5; y++)
+            {
+                for (int z = -5; z < 5; z++)
+                {
+                    particles.Add(new Particle(new Vector3(x, y, z)));
+                }
+            }
+        }
     }
 
     void FixedUpdate()
     {
-        foreach(Particle particle in particles)
+        bool attr = false;
+        foreach (Touch touch in Input.touches)
         {
-        particle.acceleration = (cursor.transform.position - particle.position).normalized*attractSpeed/1000f;
+
+            if (touch.fingerId == 0)
+            {
+                attr = true;
+            }
+
+            if (touch.fingerId == 1)
+            {
+            }
+        }
+        foreach (Particle particle in particles)
+        {
+            if (attr) particle.acceleration = (cursor.transform.position - particle.position).normalized * attractSpeed / 1000f;
             particle.tick();
         }
         SetParticles(particles);
@@ -30,7 +51,7 @@ public class ParticleController : MonoBehaviour
     void Update()
     {
         if (bPointsUpdated)
-        {
+         {
             particleSys.SetParticles(cloud, cloud.Length);
             bPointsUpdated = false;
         }
@@ -45,8 +66,8 @@ public class ParticleController : MonoBehaviour
         {
             cloud[i].position = positions[i].position;
             //cloud[i].startColor = colors[i];
-            cloud[i].startColor = new Color(255, 0, 0);
-            cloud[i].startSize = .5f;
+            cloud[i].startColor = new Color(255, 255, 255);
+            cloud[i].startSize = .1f;
         }
         bPointsUpdated = true;
     }
@@ -66,6 +87,7 @@ public class Particle
     public void tick()
     {
         velocity += acceleration;
+        velocity -= 0.005f * velocity; //todo make this a param
         position += velocity;
         acceleration = Vector3.zero;
     }
