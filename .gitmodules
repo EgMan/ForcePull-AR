@@ -1,0 +1,3 @@
+[submodule "Assets/KDTree"]
+	path = Assets/KDTree
+	url = https://github.com/viliwonka/KDTree.git
