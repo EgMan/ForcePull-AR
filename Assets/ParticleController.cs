@@ -16,19 +16,19 @@ public class ParticleController : MonoBehaviour
     private KDQuery query_thread0;
 
     void Start()
-{
+    {
         particles = new List<Particle>();
-        for (int x = -4; x < 4; x++)
+        for (int x = -4; x <= 4; x++)
         {
-            for (int y = -4; y < 4; y++)
+            for (int y = -4; y <= 4; y++)
             {
-                for (int z = -4; z < 4; z++)
+                for (int z = -4; z <= 4; z++)
                 {
                     particles.Add(new Particle(new Vector3(x, y, z)));
                 }
             }
         }
-        tree = new KDTree(particles.Select(x => x.position).ToArray(), 16);
+        tree = new KDTree(particles.Select(x => x.position).ToArray(), 64);
         query_thread0 = new KDQuery();
     }
 
@@ -37,7 +37,6 @@ public class ParticleController : MonoBehaviour
         bool attr = false;
         foreach (Touch touch in Input.touches)
         {
-
             if (touch.fingerId == 0)
             {
                 attr = true;
@@ -57,27 +56,15 @@ public class ParticleController : MonoBehaviour
         {
             Particle particle = particles[i];
             if (attr) particle.acceleration = (cursor.transform.position - particle.position).normalized * attractSpeed / 1000f;
-            particle.tick(tree, query_thread0, i);
+            particle.tick(tree, query_thread0, i, particles, cursor);
         }
         SetParticles(particles);
         tree.Rebuild();
-
-        // TODO remove
-        List<int> results = new List<int>();
-        query_thread0.Radius(tree, particles[0].position, .5f, results);
-        foreach(var part in particles)
-        {
-            part.color = Color.red;
-        }
-        foreach(var idx in results)
-        {
-            particles[idx].color = Color.green;
-        }
     }
     void Update()
     {
         if (bPointsUpdated)
-         {
+        {
             particleSys.SetParticles(cloud, cloud.Length);
             bPointsUpdated = false;
         }
@@ -104,6 +91,12 @@ public class Particle
     public Vector3 position, acceleration, velocity;
     public Color color;
     public List<Vector3> deleteme = new List<Vector3>();
+    public enum State
+    {
+        FreeFly,
+        Boid,
+    }
+    public static State state = State.Boid;
     public Particle(Vector3 position) : this(position, Vector3.zero, Vector3.zero, Color.white) { }
     public Particle(Vector3 position, Vector3 velocity, Vector3 acceleration, Color color)
     {
@@ -113,24 +106,67 @@ public class Particle
         this.color = color;
     }
 
-    public void tick(KDTree tree, KDQuery query, int index)
+    public void tick(KDTree tree, KDQuery query, int index, List<Particle> particles, Transform cursor)
     {
+        switch (state)
+        {
+            case State.Boid:
+                tree.Points[index] = position;
+                List<int> neighbors = new List<int>();
+                query.Radius(tree, position, .5f, neighbors);
+                if (neighbors.Count() == 0)
+                {
+                    break;
+                }
+
+                Vector3 avgPosition = Vector3.zero, avgHeading = Vector3.zero, awayHeading = Vector3.zero;
+                foreach (int idx in neighbors)
+                {
+                    if (idx == index)
+                    {
+                        continue;
+                    }
+                    Particle neighbor = particles[idx];
+                    avgPosition += neighbor.position;
+                    avgHeading += neighbor.velocity;
+                    awayHeading += (position - neighbor.position).normalized / (position - neighbor.position).magnitude;
+                }
+
+                Vector3 desiredVelocity = Vector3.zero;
+
+                // separation: steer to avoid crowding local flockmates
+                desiredVelocity += awayHeading * 0.01f;
+                // alignment : steer towards the average heading of local flockmates
+                desiredVelocity += avgHeading.normalized * 0.05f;
+                // cohesion : steer to move towards the average position(center of mass) of local flockmates
+                desiredVelocity += ((avgPosition / (neighbors.Count() - 1)) - position).normalized * 0.01f;
+
+                // boundry : steer towards player if outside boundary sphere
+                // TODO : make radius a param
+                Vector3 boundaryBearing = cursor.position - position;
+                if (boundaryBearing.magnitude > 7){
+                    desiredVelocity += boundaryBearing.normalized * 0.1f;
+                }
+
+                // acceleration += desiredVelocity - velocity;
+                acceleration += desiredVelocity * 0.01f;
+                float maxVel = 0.01f;
+                if (velocity.magnitude > maxVel)
+                {
+                    velocity = velocity.normalized * maxVel;
+                }
+
+                break;
+
+            default:
+            case State.FreeFly:
+                velocity -= 0.005f * velocity; //todo make this a param
+                break;
+        }
+
         velocity += acceleration;
-        velocity -= 0.005f * velocity; //todo make this a param
         position += velocity;
         acceleration = Vector3.zero;
 
-        // TODO only do this if we're in the boid state.  Also, consume results.
-        tree.Points[index] = position;
-        List<int> results = new List<int>();
-        query.Radius(tree, position, .5f, results);
-
-        // foreach (var a in tree.Points)
-        // {
-        //     if ((a - position).magnitude < 0.5f)
-        //     {
-        //         deleteme.Add(a);
-        //     }
-        // }
     }
 }
