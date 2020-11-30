@@ -5,13 +5,15 @@ using DataStructures.ViliWonka.KDTree;
 using System.Linq;
 public class ParticleController : MonoBehaviour
 {
-    public Transform cursor;
+    public GameObject cursor;
     public ParticleSystem particleSys;
     public float attractSpeed;
 
+    private CursorTracking cursorTracking;
     private List<Particle> particles;
     private KDTree tree;
     private ParticleSystem.Particle[] cloud;
+    private ParticleSystem.TrailModule trails;
     private bool bPointsUpdated = false;
     private KDQuery query_thread0;
 
@@ -30,33 +32,17 @@ public class ParticleController : MonoBehaviour
         }
         tree = new KDTree(particles.Select(x => x.position).ToArray(), 64);
         query_thread0 = new KDQuery();
+        trails = particleSys.trails;
+        cursorTracking = cursor.GetComponent<CursorTracking>();
     }
 
     void FixedUpdate()
     {
-        bool attr = false;
-        foreach (Touch touch in Input.touches)
-        {
-            if (touch.fingerId == 0)
-            {
-                attr = true;
-            }
-
-            if (touch.fingerId == 1)
-            {
-            }
-        }
-
-        if (Input.GetKey(KeyCode.Space))
-        {
-            attr = true;
-        }
-
         for (int i = 0; i < particles.Count(); i++)
         {
             Particle particle = particles[i];
-            if (attr) particle.acceleration = (cursor.transform.position - particle.position).normalized * attractSpeed / 1000f;
-            particle.tick(tree, query_thread0, i, particles, cursor);
+            if (cursorTracking.forcePull) particle.acceleration = (cursor.transform.position - particle.position).normalized * attractSpeed / 1000f;
+            particle.tick(tree, query_thread0, i, particles, cursor.transform);
         }
         SetParticles(particles);
         tree.Rebuild();
