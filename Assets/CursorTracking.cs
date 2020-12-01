@@ -29,7 +29,7 @@ public class CursorTracking : MonoBehaviour
             }
         }
 
-        if (gesture.mano_gesture_continuous != ManoGestureContinuous.NO_GESTURE)
+        if (gesture.mano_gesture_continuous != ManoGestureContinuous.NO_GESTURE && gesture.mano_gesture_continuous != 0)
         {
             transform.position = ManoUtils.Instance.CalculateNewPosition(tracking.palm_center, tracking.depth_estimation);
             if (gesture.mano_gesture_continuous == ManoGestureContinuous.CLOSED_HAND_GESTURE)

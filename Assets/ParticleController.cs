@@ -82,7 +82,7 @@ public class Particle
         FreeFly,
         Boid,
     }
-    public static State state = State.Boid;
+    public static State state = State.FreeFly;
     public Particle(Vector3 position) : this(position, Vector3.zero, Vector3.zero, Color.white) { }
     public Particle(Vector3 position, Vector3 velocity, Vector3 acceleration, Color color)
     {
