@@ -47,7 +47,7 @@ public class CursorTracking : MonoBehaviour
                 smoothedGesture = ManoGestureContinuous.CLOSED_HAND_GESTURE;
                 break;
             }
-            if (ges == ManoGestureContinuous.OPEN_HAND_GESTURE)
+            if (ges != ManoGestureContinuous.NO_GESTURE)
             {
                 smoothedGesture = ManoGestureContinuous.OPEN_HAND_GESTURE;
             }
