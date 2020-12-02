@@ -7,7 +7,13 @@ public class ParticleController : MonoBehaviour
 {
     public GameObject cursor;
     public ParticleSystem particleSys;
-    public float attractSpeed;
+    public SettingsMenu settings;
+    public enum State
+    {
+        FreeFly,
+        Boid,
+    }
+    public State state = State.FreeFly;
 
     private CursorTracking cursorTracking;
     private List<Particle> particles;
@@ -41,8 +47,8 @@ public class ParticleController : MonoBehaviour
         for (int i = 0; i < particles.Count(); i++)
         {
             Particle particle = particles[i];
-            if (cursorTracking.forcePull) particle.acceleration = (cursor.transform.position - particle.position).normalized * attractSpeed / 1000f;
-            particle.tick(tree, query_thread0, i, particles, cursor.transform);
+            if (cursorTracking.forcePull) particle.acceleration = (cursor.transform.position - particle.position).normalized * settings.attraction.value / 1000f;
+            particle.tick(tree, query_thread0, i, particles, cursor.transform, settings, state);
         }
         SetParticles(particles);
         tree.Rebuild();
@@ -77,12 +83,6 @@ public class Particle
     public Vector3 position, acceleration, velocity;
     public Color color;
     public List<Vector3> deleteme = new List<Vector3>();
-    public enum State
-    {
-        FreeFly,
-        Boid,
-    }
-    public static State state = State.FreeFly;
     public Particle(Vector3 position) : this(position, Vector3.zero, Vector3.zero, Color.white) { }
     public Particle(Vector3 position, Vector3 velocity, Vector3 acceleration, Color color)
     {
@@ -92,14 +92,14 @@ public class Particle
         this.color = color;
     }
 
-    public void tick(KDTree tree, KDQuery query, int index, List<Particle> particles, Transform cursor)
+    public void tick(KDTree tree, KDQuery query, int index, List<Particle> particles, Transform cursor, SettingsMenu settings, ParticleController.State state)
     {
         switch (state)
         {
-            case State.Boid:
+            case ParticleController.State.Boid:
                 tree.Points[index] = position;
                 List<int> neighbors = new List<int>();
-                query.Radius(tree, position, .5f, neighbors);
+                query.Radius(tree, position, 1f, neighbors);
                 if (neighbors.Count() == 0)
                 {
                     break;
@@ -115,37 +115,45 @@ public class Particle
                     Particle neighbor = particles[idx];
                     avgPosition += neighbor.position;
                     avgHeading += neighbor.velocity;
-                    awayHeading += (position - neighbor.position).normalized / (position - neighbor.position).magnitude;
+                    awayHeading += (position - neighbor.position).normalized / ((position - neighbor.position).magnitude + 0.01f);
                 }
 
                 Vector3 desiredVelocity = Vector3.zero;
 
                 // separation: steer to avoid crowding local flockmates
-                desiredVelocity += awayHeading * 0.01f;
+                desiredVelocity += awayHeading * settings.separation.value;//0.01
                 // alignment : steer towards the average heading of local flockmates
-                desiredVelocity += avgHeading.normalized * 0.05f;
+                desiredVelocity += avgHeading.normalized * settings.alignment.value;//0.05
                 // cohesion : steer to move towards the average position(center of mass) of local flockmates
-                desiredVelocity += ((avgPosition / (neighbors.Count() - 1)) - position).normalized * 0.01f;
+                desiredVelocity += ((avgPosition / (neighbors.Count() - 1)) - position).normalized * settings.cohesion.value;//0.01
 
                 // boundry : steer towards player if outside boundary sphere
                 // TODO : make radius a param
                 Vector3 boundaryBearing = cursor.position - position;
-                if (boundaryBearing.magnitude > 7){
+                int radius = 15;
+                if (boundaryBearing.magnitude > radius)
+                {
                     desiredVelocity += boundaryBearing.normalized * 0.1f;
+                    // position = position.normalized * -radius;
                 }
 
                 // acceleration += desiredVelocity - velocity;
                 acceleration += desiredVelocity * 0.01f;
-                float maxVel = 0.01f;
-                if (velocity.magnitude > maxVel)
+
+                if (acceleration.magnitude > settings.agility.value)
                 {
-                    velocity = velocity.normalized * maxVel;
+                    acceleration = acceleration.normalized * settings.agility.value;
+                }
+
+                if (velocity.magnitude > settings.speed.value)
+                {
+                    velocity = velocity.normalized * settings.speed.value;
                 }
 
                 break;
 
             default:
-            case State.FreeFly:
+            case ParticleController.State.FreeFly:
                 velocity -= 0.005f * velocity; //todo make this a param
                 break;
         }

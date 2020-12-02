@@ -56,7 +56,7 @@ public class CursorTracking : MonoBehaviour
             mesh.material = unselected;
         }
 
-        var a = debug.GetComponent<Text>();
-        a.text = "palm center:"+transform.position.ToString() + "  gesture:"+gesture.mano_gesture_continuous;
+        // var a = debug.GetComponent<Text>();
+        // a.text = "palm center:"+transform.position.ToString() + "  gesture:"+gesture.mano_gesture_continuous;
     }
 }
