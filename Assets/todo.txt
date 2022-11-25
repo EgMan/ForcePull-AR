@@ -1,9 +1,0 @@
-pointing gesture sends particles away
-reset position button
-people occlusion
-plane occlusion
-plane avoidence
-color picker
-pixel color dependent on proximity to hand
-boid vision angle and random motion component
-fix boid position NAN bug
